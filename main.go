@@ -18,7 +18,7 @@ type OAuthMux struct {
 	m http.Handler
 	c http.Client
 
-	InfoEP string
+	Base string
 
 	ClientID, ClientPass string
 }
@@ -29,14 +29,13 @@ func (m *OAuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if hdr == "" || !strings.HasPrefix(hdr, "Bearer ") {
 		w.Header().Set("WWW-Authenticate", "Bearer")
-		w.WriteHeader(401)
-		fmt.Fprintf(w, "No Authorization: Bearer header found.")
+		http.Redirect(w, r, fmt.Sprintf("%s/authorize?response_type=code&client_id=%s&client_secret=%s&scope=openid profile", m.Base, m.ClientID, m.ClientPass), 302)
 		return
 	}
 
 	token := strings.TrimPrefix(hdr, "Bearer ")
 
-	r, err := http.NewRequest("GET", m.InfoEP+"?token="+token, nil)
+	r, err := http.NewRequest("GET", m.Base+"/userinfo?token="+token, nil)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(403)
@@ -69,10 +68,10 @@ func (m *OAuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 //NewOAuthMux accepts a mux and some details, and returns an oauth mux instance
-func NewOAuthMux(sub http.Handler, userInfo, cid, cpass string) *OAuthMux {
+func NewOAuthMux(sub http.Handler, base, cid, cpass string) *OAuthMux {
 	m := OAuthMux{
 		m:          sub,
-		InfoEP:     userInfo,
+		Base:       base,
 		ClientID:   cid,
 		ClientPass: cpass,
 	}
@@ -124,13 +123,16 @@ func handleReq(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`This is a secret: "Hello"`))
 }
 
+var (
+	oauthServer                      = os.Getenv("OAUTH_SERVER")
+	oauthClientID, oauthClientSecret = os.Getenv("OAUTH_CLIENT_ID"), os.Getenv("OAUTH_CLIENT_SECRET")
+)
+
 func main() {
 	m := http.NewServeMux()
 
 	m.HandleFunc("/", handleReq)
-
-	uiep := fmt.Sprintf("%s/token_info", os.Getenv("OAUTH_SERVER"))
-	om := NewOAuthMux(m, uiep, "test", "test")
+	om := NewOAuthMux(m, oauthServer, oauthClientID, oauthClientSecret)
 
 	opt := cors.Options{
 		AllowedOrigins: []string{"*"},
