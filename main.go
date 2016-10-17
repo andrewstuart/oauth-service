@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -40,14 +41,16 @@ func (m *OAuthMux) getToken(code string) (string, error) {
 		"code":       code,
 	})
 
+	log.Println(s)
+
 	res, err := m.c.Get(s)
 	if err != nil {
 		return "", err
 	}
 	defer res.Body.Close()
 
-	var resm structres
-	err = json.NewDecoder(res.Body).Decode(&resm)
+	var resm structRes
+	err = json.NewDecoder(io.TeeReader(res.Body, os.Stderr)).Decode(&resm)
 	if err != nil {
 		return "", err
 	}
@@ -55,7 +58,7 @@ func (m *OAuthMux) getToken(code string) (string, error) {
 	return resm.AccessToken, err
 }
 
-type structres struct {
+type structRes struct {
 	AccessToken string `json:"access_token"`
 }
 
@@ -83,7 +86,7 @@ func (m *OAuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println(token)
+	log.Println("Bearer token: ", token)
 
 	req, err := http.NewRequest("GET", m.Base+"/userinfo", nil)
 	if err != nil {
@@ -104,7 +107,8 @@ func (m *OAuthMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer res.Body.Close()
 
 	if res.StatusCode/100 != 2 {
-		log.Println("Non-200 userinfo response")
+		log.Println("Non-200 userinfo response:")
+		res.Write(os.Stderr)
 		w.WriteHeader(403)
 		return
 	}
