@@ -1,0 +1,19 @@
+{
+	"ImportPath": "astuart.co/oauth-service",
+	"GoVersion": "go1.7",
+	"GodepVersion": "v74",
+	"Deps": [
+		{
+			"ImportPath": "github.com/rs/cors",
+			"Rev": "ceb1fbf238d7711a11a86a2622d0b85305348aeb"
+		},
+		{
+			"ImportPath": "github.com/rs/xhandler",
+			"Rev": "d9d9599b6aaf6a058cb7b1f48291ded2cbd13390"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "f09c4662a0bd6bd8943ac7b4931e185df9471da4"
+		}
+	]
+}
